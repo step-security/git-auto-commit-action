@@ -1,0 +1,13 @@
+{
+  "devDependencies": {
+    "bats": "^1.11.1",
+    "bats-assert": "ztombol/bats-assert",
+    "bats-support": "ztombol/bats-support"
+  },
+  "scripts": {
+    "test": "bats tests"
+  },
+  "dependencies": {
+    "axios": "^1.8.4"
+  }
+}
