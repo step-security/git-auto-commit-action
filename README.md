@@ -308,8 +308,6 @@ As git-auto-commit by default does not use **your** username and email when crea
      commit_user_email: ${{ steps.import-gpg.outputs.email }}
 ```
 
-See discussion [#334](https://github.com/step-security/git-auto-commit-action/discussions/334) for details.
-
 ### Use in forks from private repositories
 
 By default, GitHub Actions doesn't run Workflows on forks from **private** repositories. To enable Actions for **private** repositories enable "Run workflows from pull requests" in your repository settings.
@@ -326,7 +324,7 @@ See [this announcement from GitHub](https://github.blog/2020-08-03-github-action
 > **If you use this Action in combination with a linter/fixer, it's easier if you run the Action on `push` on your `main`-branch.**
 
 > [!WARNING] 
-> Due to limitations of GitHub, this Action currently can't push commits to a base repository, if the fork _lives_ under an organisation. See [github/community#6634](https://github.com/orgs/community/discussions/5634) and [this comment](https://github.com/step-security/git-auto-commit-action/issues/211#issuecomment-1428849944) for details.
+> Due to limitations of GitHub, this Action currently can't push commits to a base repository, if the fork _lives_ under an organisation. See [github/community#6634](https://github.com/orgs/community/discussions/5634).
 
 By default, this Action will not run on Pull Requests which have been opened by forks. (This is a limitation by GitHub, not by us.)   
 However, there are a couple of ways to use this Actions in Workflows that should be triggered by forked repositories.
@@ -346,7 +344,6 @@ The workflow below runs whenever a commit is pushed to the `main`-branch or when
 If the workflow is triggered by the `pull_request_target`-event, the workflow will run in the context of the base of the pull request, rather than in the context of the merge commit, as the `pull_request` event does.
 In other words, this will allow your workflow to be run in the repository where the pull request is opened to and will push changes back to the fork.
 
-Check out the discussion in [#211](https://github.com/step-security/git-auto-commit-action/issues/211) for more information on this.
 
 ```yaml
 name: Format PHP
@@ -422,7 +419,6 @@ The steps in your workflow might look like this:
     skip_fetch: true
 ```
 
-See discussion in [#159](https://github.com/step-security/git-auto-commit-action/issues/159#issuecomment-845347950) for details.
 
 ## Troubleshooting
 ### Action does not push commit to repository
@@ -441,9 +437,7 @@ Updating the `token` value with a Personal Access Token should fix your issues.
 The default `GITHUB_TOKEN` issued by GitHub Action does not have permission to make changes to workflow files located in `.github/workflows/`.
 To fix this, please create a personal access token (PAT) and pass the token to the `actions/checkout`-step in your workflow. (Similar to [how to push to protected branches](https://github.com/step-security/git-auto-commit-action?tab=readme-ov-file#push-to-protected-branches)).
 
-If a PAT does not work for you, you could also create a new GitHub app and use it's token in your workflows. See [this comment in #87](https://github.com/step-security/git-auto-commit-action/issues/87#issuecomment-1939138661) for details.
-
-See [#322](https://github.com/step-security/git-auto-commit-action/issues/322) for details and discussions around this topic.
+If a PAT does not work for you, you could also create a new GitHub app and use it's token in your workflows.
 
 ### Push to protected branches
 
@@ -484,7 +478,6 @@ If you're using the Action with a custom `file_pattern` and the Action throws a 
 
 `file_pattern` is used both for `git-status` and `git-add` in this Action. `git-add` will throw a fatal error, if for example, you use a file pattern like `*.js *.ts` but no `*.ts` files exist in your projects' repository.
 
-See [Issue #227](https://github.com/step-security/git-auto-commit-action/issues/227) for details.
 
 ### Custom `file_pattern`, changed files but seeing "Working tree clean. Nothing to commit." in the logs
 
@@ -504,7 +497,6 @@ To fix this add `disable_globbing: true` to your Workflow.
     disable_globbing: true
 ```
 
-See [Issue #239](https://github.com/step-security/git-auto-commit-action/issues/239) for details.
 
 ## Running the tests
 
@@ -529,10 +521,6 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 We also provide major version tags to make it easier to always use the latest release of a major version. For example, you can use `step-security/git-auto-commit-action@v5` to always use the latest release of the current major version.
 (More information about this [here](https://help.github.com/en/actions/building-actions/about-actions#versioning-your-action).)
 
-## Credits
-
-* [Stefan Zweifel](https://github.com/stefanzweifel)
-* [All Contributors](https://github.com/step-security/git-auto-commit-action/graphs/contributors)
 
 This Action has been inspired and adapted from the [auto-commit](https://github.com/cds-snc/github-actions/tree/master/auto-commit
 )-Action of the Canadian Digital Service and this [commit](https://github.com/elstudio/actions-js-build/blob/41d604d6e73d632e22eac40df8cc69b5added04b/commit/entrypoint.sh)-Action by Eric Johnson.
