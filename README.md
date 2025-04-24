@@ -286,14 +286,14 @@ The example below can be used as a starting point to generate a multiline commit
 ### Signing Commits
 
 If you would like to sign your commits using a GPG key, you will need to use an additional action. 
-You can use the [crazy-max/ghaction-import-gpg](https://github.com/crazy-max/ghaction-import-gpg) action and follow its setup instructions.
+You can use the [step-security/ghaction-import-gpg](https://github.com/step-security/ghaction-import-gpg) action and follow its setup instructions.
 
 As git-auto-commit by default does not use **your** username and email when creating a commit, you have to override these values in your workflow.
 
 ```yml
 - name: "Import GPG key"
   id: import-gpg
-  uses: crazy-max/ghaction-import-gpg@v6
+  uses: step-security/ghaction-import-gpg@v6
   with:
     gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
     passphrase: ${{ secrets.GPG_PASSPHRASE }}
