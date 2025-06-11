@@ -42,6 +42,11 @@ _main() {
     _check_if_git_is_available
 
     _switch_to_repository
+
+    _check_if_is_git_repository
+
+    _check_if_repository_is_in_detached_state
+
     if "$INPUT_CREATE_GIT_TAG_ONLY"; then
         _log "debug" "Create git tag only";
         _set_github_output "create_git_tag_only" "true"
@@ -100,11 +105,26 @@ _git_is_dirty() {
     gitStatusMessage="$((git status -s $INPUT_STATUS_OPTIONS -- ${INPUT_FILE_PATTERN_EXPANDED:+${INPUT_FILE_PATTERN_EXPANDED[@]}} >/dev/null ) 2>&1)";
     # shellcheck disable=SC2086
     gitStatus="$(git status -s $INPUT_STATUS_OPTIONS -- ${INPUT_FILE_PATTERN_EXPANDED:+${INPUT_FILE_PATTERN_EXPANDED[@]}})";
-    if [ $? -ne 0 ]; then
-        _log "error" "git-status failed with:<$gitStatusMessage>";
+    [ -n "$gitStatus" ]
+}
+
+_check_if_is_git_repository() {
+    if [ -d ".git" ]; then
+        _log "debug" "Repository found.";
+    else
+        _log "error" "Not a git repository. Please make sure to run this action in a git repository. Adjust the `repository` input if necessary.";
         exit 1;
     fi
-    [ -n "$gitStatus" ]
+}
+
+_check_if_repository_is_in_detached_state() {
+    if [ -z "$(git symbolic-ref HEAD)" ]
+    then
+        _log "error" "Repository is in detached HEAD state. Please make sure you check out a branch. Adjust the `ref` input accordingly.";
+        exit 1;
+    else
+        _log "debug" "Repository is on a branch.";
+    fi
 }
 
 _add_files() {
