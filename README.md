@@ -59,9 +59,8 @@ The following is an extended example with all available options.
     # Defaults to "Apply automatic changes"
     commit_message: Automated Change
 
-    # Optional. Local and remote branch name where commit is going to be pushed
-    #  to. Defaults to the current branch.
-    #  You might need to set `create_branch: true` if the branch does not exist.
+    # Optional. Remote branch name where commit is going to be pushed to. 
+    # Defaults to the current branch.
     branch: feature-123
 
     # Optional. Options used by `git-commit`.
@@ -102,19 +101,10 @@ The following is an extended example with all available options.
     
     # Optional. Disable dirty check and always try to create a commit and push
     skip_dirty_check: true    
-    
-    # Optional. Skip internal call to `git fetch`
-    skip_fetch: true    
-    
-    # Optional. Skip internal call to `git checkout`
-    skip_checkout: true
 
     # Optional. Prevents the shell from expanding filenames. 
     # Details: https://www.gnu.org/software/bash/manual/html_node/Filename-Expansion.html
     disable_globbing: true
-
-    # Optional. Create given branch name in local and remote repository.
-    create_branch: true
 
     # Optional. Creates a new tag and pushes it to remote without creating a commit. 
     # Skips dirty check and changed files. Must be used with `tagging_message`.
@@ -416,7 +406,6 @@ The steps in your workflow might look like this:
     commit_message: ${{ steps.last-commit.outputs.message }}
     commit_options: '--amend --no-edit'
     push_options: '--force'
-    skip_fetch: true
 ```
 
 
@@ -452,9 +441,11 @@ If you create a fine-grained personal access token, apply the `Contents`-permiss
 ```yaml
 - uses: actions/checkout@v4
   with:
-    token: ${{ secrets.PAT }}
+    # We pass the "PAT" secret to the checkout action; if no PAT secret is available to the workflow runner (eg. Dependabot) we fall back to the default "GITHUB_TOKEN".
+    token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
 ```
 You can learn more about Personal Access Token in the [GitHub documentation](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token).
+
 
 > [!TIP] 
 > If you're working in an organisation, and you don't want to create the PAT from your personal account, we recommend using a bot-account for such tokens.
