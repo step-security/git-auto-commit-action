@@ -1108,7 +1108,7 @@ END
     run git_auto_commit
 
     assert_failure;
-    assert_line "::error::Repository is in detached HEAD state. Please checkout a branch before committing."
+    assert_line "::error::Repository is in detached HEAD state. Please make sure you check out a branch. Adjust the `ref` input accordingly."
 }
 
 @test "it creates a tag if create_git_tag_only is set to true and a message has been supplied" {
