@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "@vercel/ncc": "^0.38.3",
+    "@vercel/ncc": "^0.38.4",
     "bats": "^1.11.1",
     "bats-assert": "ztombol/bats-assert",
     "bats-support": "ztombol/bats-support"
