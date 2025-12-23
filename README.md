@@ -16,7 +16,7 @@ Adding git-auto-commit to your Workflow only takes a couple lines of code.
 2. Add the following step at the end of your job, after other steps that might add or change files.
 
 ```yaml
-- uses: step-security/git-auto-commit-action@v5
+- uses: step-security/git-auto-commit-action@v7
 ```
 
 Your Workflow should look similar to this example.
@@ -36,7 +36,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.head_ref }}
 
@@ -44,7 +44,7 @@ jobs:
       # …
 
       # Commit all changed files back to the repository
-      - uses: step-security/git-auto-commit-action@v5
+      - uses: step-security/git-auto-commit-action@v7
 ```
 
 > [!NOTE]
@@ -53,7 +53,7 @@ jobs:
 The following is an extended example with all available options.
 
 ```yaml
-- uses: step-security/git-auto-commit-action@v5
+- uses: step-security/git-auto-commit-action@v7
   with:
     # Optional. Commit message for the created commit.
     # Defaults to "Apply automatic changes"
@@ -82,10 +82,15 @@ The following is an extended example with all available options.
     commit_user_name: My GitHub Actions Bot # defaults to "github-actions[bot]"
     commit_user_email: my-github-actions-bot@example.org # defaults to "41898282+github-actions[bot]@users.noreply.github.com"
     commit_author: Author <actions@github.com> # defaults to "username <numeric_id+username@users.noreply.github.com>", where "numeric_id" and "username" belong to the author of the commit that triggered the run
+        
+    # Optional. Tag name to be created in the local repository and 
+    # pushed to the remote repository on the defined branch.
+    # If only one of `tag_name` or `tagging_message` is provided, the value of the provided field will be used for both tag name and message.
+    tag_name: 'v1.0.0'
 
-    # Optional. Tag name being created in the local repository and 
-    # pushed to remote repository and defined branch.
-    tagging_message: 'v1.0.0'
+    # Optional. Message to annotate the created tag with.
+    # If only one of `tag_name` or `tagging_message` is provided, the value of the provided field will be used for both tag name and message.
+    tagging_message: 'Codename "Sunshine"'
 
     # Optional. Option used by `git-status` to determine if the repository is 
     # dirty. See https://git-scm.com/docs/git-status#_options
@@ -102,12 +107,21 @@ The following is an extended example with all available options.
     # Optional. Disable dirty check and always try to create a commit and push
     skip_dirty_check: true    
 
+    # Optional. Skip internal call to `git fetch`
+    skip_fetch: true
+
+    # Optional. Skip internal call to `git checkout`
+    skip_checkout: true
+
     # Optional. Prevents the shell from expanding filenames. 
     # Details: https://www.gnu.org/software/bash/manual/html_node/Filename-Expansion.html
     disable_globbing: true
 
+    # Optional. Create given branch name in local and remote repository.
+    create_branch: true
+
     # Optional. Creates a new tag and pushes it to remote without creating a commit. 
-    # Skips dirty check and changed files. Must be used with `tagging_message`.
+    # Skips dirty check and changed files. Must be used in combination with `tag` and `tagging_message`.
     create_git_tag_only: false
 ```
 
@@ -138,14 +152,14 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         ref: ${{ github.head_ref }}
 
     - name: Run php-cs-fixer
       uses: docker://oskarstark/php-cs-fixer-ga
 
-    - uses: step-security/git-auto-commit-action@v5
+    - uses: step-security/git-auto-commit-action@v7
       with:
         commit_message: Apply php-cs-fixer changes
 ```
@@ -167,7 +181,7 @@ You can use these outputs to trigger other Actions in your Workflow run based on
 ### Example
 
 ```yaml
-  - uses: step-security/git-auto-commit-action@v5
+  - uses: step-security/git-auto-commit-action@v7
     id: auto-commit-action #mandatory for the output to show up in ${{ steps }}
     with:
       commit_message: Apply php-cs-fixer changes
@@ -203,7 +217,7 @@ You must use `action/checkout@v2` or later versions to check out the repository.
 In non-`push` events, such as `pull_request`, make sure to specify the `ref` to check out:
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v5
   with:
     ref: ${{ github.head_ref }}
 ```
@@ -221,7 +235,7 @@ You can change this by creating a new [Personal Access Token (PAT)](https://gith
 storing the token as a secret in your repository and then passing the new token to the [`actions/checkout`](https://github.com/actions/checkout#usage) Action step.
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v5
   with:
     token: ${{ secrets.PAT }}
 ```
@@ -267,7 +281,7 @@ The example below can be used as a starting point to generate a multiline commit
     # Quick and dirty step to get rid of the temporary file holding the commit message
     - run: rm -rf commitmessage.txt
 
-    - uses: step-security/git-auto-commit-action@v5
+    - uses: step-security/git-auto-commit-action@v7
       id: commit
       with:
         commit_message: ${{ steps.commit_message_step.outputs.commit_message }}
@@ -291,7 +305,7 @@ As git-auto-commit by default does not use **your** username and email when crea
     git_commit_gpgsign: true
 
 - name: "Commit and push changes"
-  uses: step-security/git-auto-commit-action@v5
+  uses: step-security/git-auto-commit-action@v7
   with:
      commit_author: "${{ steps.import-gpg.outputs.name }} <${{ steps.import-gpg.outputs.email }}>"
      commit_user_name: ${{ steps.import-gpg.outputs.name }}
@@ -351,7 +365,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         # Checkout the fork/head-repository and push changes to the fork.
         # If you skip this, the base repository will be checked out and changes
@@ -365,7 +379,7 @@ jobs:
     - name: Run php-cs-fixer
       uses: docker://oskarstark/php-cs-fixer-ga
 
-    - uses: step-security/git-auto-commit-action@v5
+    - uses: step-security/git-auto-commit-action@v7
 ```
 
 For more information about running Actions on forks, see [this announcement from GitHub](https://github.blog/2020-08-03-github-actions-improvements-for-fork-and-pull-request-workflows/).
@@ -400,12 +414,13 @@ The steps in your workflow might look like this:
     echo "message=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
     echo "author=$(git log -1 --pretty=\"%an <%ae>\")" >> $GITHUB_OUTPUT
 
-- uses: step-security/git-auto-commit-action@v5
+- uses: step-security/git-auto-commit-action@v7
   with:
     commit_author: ${{ steps.last-commit.outputs.author }}
     commit_message: ${{ steps.last-commit.outputs.message }}
     commit_options: '--amend --no-edit'
     push_options: '--force'
+    skip_fetch: true
 ```
 
 
@@ -439,7 +454,7 @@ If you create a personal access token (classic), apply the `repo` and `workflow`
 If you create a fine-grained personal access token, apply the `Contents`-permissions.
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v5
   with:
     # We pass the "PAT" secret to the checkout action; if no PAT secret is available to the workflow runner (eg. Dependabot) we fall back to the default "GITHUB_TOKEN".
     token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
@@ -453,7 +468,7 @@ You can learn more about Personal Access Token in the [GitHub documentation](htt
 If you go the "force pushes" route, you have to enable force pushes to a protected branch (see [documentation](https://help.github.com/en/github/administering-a-repository/enabling-force-pushes-to-a-protected-branch)) and update your Workflow to use force push like this.
 
 ```yaml
-    - uses: step-security/git-auto-commit-action@v5
+    - uses: step-security/git-auto-commit-action@v7
       with:
         commit_message: Apply php-cs-fixer changes
         push_options: --force
@@ -482,7 +497,7 @@ This is due to the fact, that the `*.md`-glob is expanded before sending it to `
 To fix this add `disable_globbing: true` to your Workflow.
 
 ```yaml
-- uses: step-security/git-auto-commit-action@v5
+- uses: step-security/git-auto-commit-action@v7
   with:
     file_pattern: '*.md'
     disable_globbing: true
@@ -509,7 +524,7 @@ yarn test
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/step-security/git-auto-commit-action/tags).
 
-We also provide major version tags to make it easier to always use the latest release of a major version. For example, you can use `step-security/git-auto-commit-action@v5` to always use the latest release of the current major version.
+We also provide major version tags to make it easier to always use the latest release of a major version. For example, you can use `step-security/git-auto-commit-action@v7` to always use the latest release of the current major version.
 (More information about this [here](https://help.github.com/en/actions/building-actions/about-actions#versioning-your-action).)
 
 
