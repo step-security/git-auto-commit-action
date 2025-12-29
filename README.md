@@ -112,6 +112,9 @@ The following is an extended example with all available options.
 
     # Optional. Skip internal call to `git checkout`
     skip_checkout: true
+    
+    # Optional. Skip internal call to `git push`
+    skip_push: true
 
     # Optional. Prevents the shell from expanding filenames. 
     # Details: https://www.gnu.org/software/bash/manual/html_node/Filename-Expansion.html
@@ -213,7 +216,7 @@ If this Action doesn't work for your workflow, check out [EndBug/add-and-commit]
 
 ### Checkout the correct branch
 
-You must use `action/checkout@v2` or later versions to check out the repository.
+You must use `actions/checkout@v2` or later versions to check out the repository.
 In non-`push` events, such as `pull_request`, make sure to specify the `ref` to check out:
 
 ```yaml
