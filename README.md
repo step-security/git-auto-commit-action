@@ -83,7 +83,7 @@ The following is an extended example with all available options.
     # - https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-aiddefpathspecapathspec
     file_pattern: '*.php src/*.js tests/*.js'
 
-    # Optional. Local file path to the repository.
+    # Optional. Relative file path under $GITHUB_WORKSPACE to the repository.
     # Defaults to the root of the repository.
     repository: .
 
