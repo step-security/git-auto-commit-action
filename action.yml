@@ -29,7 +29,7 @@ inputs:
     required: false
     default: '.'
   repository:
-    description: Local file path to the git repository. Defaults to the current directory (`.`)
+    description: Relative file path under $GITHUB_WORKSPACE to the git repository. Defaults to the current directory (`.`)
     required: false
     default: '.'
   commit_user_name:
