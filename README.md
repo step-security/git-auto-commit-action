@@ -10,6 +10,11 @@ By default, the commit is made in the name of "GitHub Actions" and co-authored b
 
 If you want to learn more how this Action works under the hood, check out [this article](https://michaelheap.com/git-auto-commit/) by Michael Heap.
 
+If your use case is not covered by git-auto-commit, you might want to check out the following alternative Actions:
+
+- [planetscale/ghcommit-action](https://github.com/planetscale/ghcommit-action)
+- [EndBug/add-and-commit](https://github.com/EndBug/add-and-commit)
+
 ## Usage
 
 Adding git-auto-commit to your Workflow only takes a couple lines of code.
@@ -41,6 +46,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.head_ref }}
+          # Value already defaults to true, but `persist-credentials` is required to push new commits to the repository.
+          persist-credentials: true
 
       # Other steps that change files in the repository go here
       # …
@@ -76,7 +83,7 @@ The following is an extended example with all available options.
     # - https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-aiddefpathspecapathspec
     file_pattern: '*.php src/*.js tests/*.js'
 
-    # Optional. Local file path to the repository.
+    # Optional. Relative file path under $GITHUB_WORKSPACE to the repository.
     # Defaults to the root of the repository.
     repository: .
 
@@ -168,6 +175,8 @@ jobs:
       with:
         commit_message: Apply php-cs-fixer changes
 ```
+
+See [EXAMPLES.md](EXAMPLES.md) for more scenarios, including auto-formatting, dependency updates, generated docs, release tagging, drift checks, and GPG-signed commits.
 
 ## Inputs
 
@@ -439,7 +448,9 @@ Make sure to [checkout the correct branch](#checkout-the-correct-branch).
 If your Workflow can't push the commit to the repository because of authentication issues,
 please update your Workflow configuration and usage of [`actions/checkout`](https://github.com/actions/checkout#usage).
 
-Updating the `token` value with a Personal Access Token should fix your issues.
+Please note that `persist-credentials` in `actions/checkout` must be set to `true` to push new commits to the repository.
+
+If you still can't push the commit, and you're using branch protection rules or similar features, updating the `token` value with a Personal Access Token should fix your issues.
 
 ### git-auto-commit fails to push commit that creates or updates files in `.github/workflows/`
 

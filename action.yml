@@ -25,11 +25,11 @@ inputs:
     required: false
     default: ''
   file_pattern:
-    description: File pattern used for `git add`. For example `src/*.js`
+    description: File pattern used for `git add` and the dirty-check (`git status`). Supports multiple space-separated patterns. For example `src/*.js`
     required: false
     default: '.'
   repository:
-    description: Local file path to the git repository. Defaults to the current directory (`.`)
+    description: Relative file path under $GITHUB_WORKSPACE to the git repository. Defaults to the current directory (`.`)
     required: false
     default: '.'
   commit_user_name:
@@ -74,26 +74,65 @@ inputs:
     default: false
   disable_globbing:
     description: Stop the shell from expanding filenames (https://www.gnu.org/software/bash/manual/html_node/Filename-Expansion.html)
+    required: false
     default: false
   create_branch:
     description: Create new branch with the name of `branch`-input in local and remote repository, if it doesn't exist yet.
+    required: false
     default: false
   create_git_tag_only:
     description: Perform a clean git tag and push, without commiting anything
     required: false
     default: false
+  before_add_hook:
+    description: Shell snippet to run before `git add`.
+    required: false
+    default: ''
+  after_add_hook:
+    description: Shell snippet to run after `git add`.
+    required: false
+    default: ''
+  before_commit_hook:
+    description: Shell snippet to run before `git commit`.
+    required: false
+    default: ''
+  after_commit_hook:
+    description: Shell snippet to run after `git commit`.
+    required: false
+    default: ''
+  before_tag_hook:
+    description: Shell snippet to run before `git tag` is created.
+    required: false
+    default: ''
+  after_tag_hook:
+    description: Shell snippet to run after `git tag` is created.
+    required: false
+    default: ''
+  before_push_hook:
+    description: Shell snippet to run before `git push`.
+    required: false
+    default: ''
+  after_push_hook:
+    description: Shell snippet to run after `git push`.
+    required: false
+    default: ''
+  disable_pull_request_target_trigger_warning:
+    description: Suppress the security warning emitted when the action runs on a `pull_request_target` event.
+    required: false
+    default: false
   internal_git_binary:
     description: Internal use only! Path to git binary used to check if git is available. (Don't change this!)
+    required: false
     default: git
 
 
 outputs:
   changes_detected:
-    description: Value is "true", if the repository was dirty and file changes have been detected. Value is "false", if no changes have been detected.
+    description: Value is "true" if matching changes were detected and committed. Value is "false" if no matching changes were detected or only CRLF changes were staged. Not set in `create_git_tag_only` mode.
   commit_hash:
-    description: Full hash of the created commit. Only present if the "changes_detected" output is "true".
+    description: Full hash of the created commit. Only set when a commit was actually made (i.e. `changes_detected` is "true").
   create_git_tag_only:
-    description: Value is "true", if a git tag was created using the `create_git_tag_only`-input.
+    description: Set to "true" when the action ran in `create_git_tag_only` mode. Never set to "false".
 
 runs:
   using: 'node24'

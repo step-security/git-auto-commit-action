@@ -26,6 +26,16 @@ _log() {
     echo "::$level::$message";
 }
 
+_run_hook() {
+    local name=${1}
+    local snippet=${2:-}
+
+    if [ -n "$snippet" ]; then
+        _log "debug" "Running $name";
+        eval "$snippet"
+    fi
+}
+
 _main() {
     _check_if_git_is_available
 
@@ -35,29 +45,61 @@ _main() {
 
     _check_if_repository_is_in_detached_state
 
+    _check_for_pull_request_target_trigger
+
     if "$INPUT_CREATE_GIT_TAG_ONLY"; then
         _log "debug" "Create git tag only";
         _set_github_output "create_git_tag_only" "true"
-        _tag_commit
+
+        if [ -n "$INPUT_TAG_NAME" ] || [ -n "$INPUT_TAGGING_MESSAGE" ]; then
+            _run_hook "before_tag_hook" "$INPUT_BEFORE_TAG_HOOK"
+            _tag_commit
+            _run_hook "after_tag_hook" "$INPUT_AFTER_TAG_HOOK"
+        else
+            _tag_commit
+        fi
+
+        if ! "$INPUT_SKIP_PUSH"; then
+            _run_hook "before_push_hook" "$INPUT_BEFORE_PUSH_HOOK"
+        fi
         _push_to_github
+        if ! "$INPUT_SKIP_PUSH"; then
+            _run_hook "after_push_hook" "$INPUT_AFTER_PUSH_HOOK"
+        fi
     elif _git_is_dirty || "$INPUT_SKIP_DIRTY_CHECK"; then
 
         _set_github_output "changes_detected" "true"
 
         _switch_to_branch
 
+        _run_hook "before_add_hook" "$INPUT_BEFORE_ADD_HOOK"
         _add_files
+        _run_hook "after_add_hook" "$INPUT_AFTER_ADD_HOOK"
 
         # Check dirty state of repo again using git-diff.
         # (git-diff detects better if CRLF of files changes and does NOT
         # proceed, if only CRLF changes are detected. See #241 and #265
         # for more details.)
         if [ -n "$(git diff --staged)" ] || "$INPUT_SKIP_DIRTY_CHECK"; then
+            _run_hook "before_commit_hook" "$INPUT_BEFORE_COMMIT_HOOK"
             _local_commit
+            _run_hook "after_commit_hook" "$INPUT_AFTER_COMMIT_HOOK"
 
-            _tag_commit
+            if [ -n "$INPUT_TAG_NAME" ] || [ -n "$INPUT_TAGGING_MESSAGE" ]; then
+                _run_hook "before_tag_hook" "$INPUT_BEFORE_TAG_HOOK"
+                _tag_commit
+                _run_hook "after_tag_hook" "$INPUT_AFTER_TAG_HOOK"
+            else
+                _tag_commit
+            fi
 
+            if ! "$INPUT_SKIP_PUSH"; then
+                _run_hook "before_push_hook" "$INPUT_BEFORE_PUSH_HOOK"
+            fi
             _push_to_github
+            if ! "$INPUT_SKIP_PUSH"; then
+                _run_hook "after_push_hook" "$INPUT_AFTER_PUSH_HOOK"
+            fi
         else
             _set_github_output "changes_detected" "false"
 
@@ -104,6 +146,16 @@ _check_if_is_git_repository() {
     else
         _log "error" "Not a git repository. Please make sure to run this action in a git repository. Adjust the `repository` input if necessary.";
         exit 1;
+    fi
+}
+
+_check_for_pull_request_target_trigger() {
+    if "$INPUT_DISABLE_PULL_REQUEST_TARGET_TRIGGER_WARNING"; then
+        return
+    fi
+
+    if [ "${GITHUB_EVENT_NAME:-}" = "pull_request_target" ]; then
+        _log "warning" "git-auto-commit is running on a 'pull_request_target' event. This trigger can be a security risk: a malicious pull request could potentially exfiltrate your repository secrets. See https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target and the 'pull_request_target' section in the git-auto-commit README (https://github.com/stefanzweifel/git-auto-commit-action#using-the-action-in-a-pull_request_target-workflow) for safer usage. Set 'disable_pull_request_target_trigger_warning: true' to suppress this warning.";
     fi
 }
 
