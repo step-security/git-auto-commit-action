@@ -1,15 +1,30 @@
 {
+  "name": "@step-security/xperiments-action",
+  "private": true,
+  "author": "step-security",
+  "publisher": "step-security",
+  "homepage": "https://github.com/step-security/xperiments-action#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/step-security/xperiments-action.git"
+  },
+  "bugs": {
+    "url": "https://github.com/step-security/xperiments-action/issues"
+  },
+  "engines": {
+    "node": ">=24",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "test": "bats tests"
+  },
   "devDependencies": {
-    "@vercel/ncc": "^0.38.3",
-    "bats": "^1.11.1",
+    "bats": "^1.13.0",
     "bats-assert": "ztombol/bats-assert",
     "bats-support": "ztombol/bats-support"
   },
-  "scripts": {
-    "test": "bats tests",
-    "build": "ncc build index.js -m -o dist"
-  },
   "dependencies": {
-    "axios": "^1.8.4"
+    "axios": "^1.20.0",
+    "@actions/core": "^2.0.3"
   }
 }
