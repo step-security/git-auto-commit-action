@@ -10,11 +10,16 @@ By default, the commit is made in the name of "GitHub Actions" and co-authored b
 
 If you want to learn more how this Action works under the hood, check out [this article](https://michaelheap.com/git-auto-commit/) by Michael Heap.
 
+If your use case is not covered by git-auto-commit, you might want to check out the following alternative Actions:
+
+- [step-security/ghcommit-action](https://github.com/step-security/ghcommit-action)
+- [step-security/add-and-commit](https://github.com/step-security/add-and-commit)
+
 ## Usage
 
 Adding git-auto-commit to your Workflow only takes a couple lines of code.
 
-1. Set the `contents`-permission of the default GITHUB_TOKEN to `true`. (Required to push new commits to the repository)
+1. Set the `contents`-permission of the default GITHUB_TOKEN to `write`. (Required to push new commits to the repository)
 2. Add the following step at the end of your job, after other steps that might add or change files.
 
 ```yaml
@@ -38,9 +43,11 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.head_ref }}
+          # Value already defaults to true, but `persist-credentials` is required to push new commits to the repository.
+          persist-credentials: true
 
       # Other steps that change files in the repository go here
       # …
@@ -76,7 +83,7 @@ The following is an extended example with all available options.
     # - https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-aiddefpathspecapathspec
     file_pattern: '*.php src/*.js tests/*.js'
 
-    # Optional. Local file path to the repository.
+    # Optional. Relative file path under $GITHUB_WORKSPACE to the repository.
     # Defaults to the root of the repository.
     repository: .
 
@@ -125,9 +132,27 @@ The following is an extended example with all available options.
     # Optional. Create given branch name in local and remote repository.
     create_branch: true
 
-    # Optional. Creates a new tag and pushes it to remote without creating a commit. 
+    # Optional. Creates a new tag and pushes it to remote without creating a commit.
     # Skips dirty check and changed files. Must be used in combination with `tag` and `tagging_message`.
     create_git_tag_only: false
+
+    # Optional. Suppress the security warning emitted when the action runs on a
+    # `pull_request_target` event. See the "Workflow should run in **base** repository"
+    # section below for context before disabling this warning.
+    disable_pull_request_target_trigger_warning: false
+
+    # Optional. Shell snippets to run around each git operation. Each hook
+    # is evaluated in the same bash process as the action — `set -eu` is
+    # in effect, the working directory is your repository, and all
+    # `INPUT_*` env vars are visible. A non-zero exit aborts the action.
+    before_add_hook: ''
+    after_add_hook: ''
+    before_commit_hook: ''
+    after_commit_hook: ''
+    before_tag_hook: ''
+    after_tag_hook: ''
+    before_push_hook: ''
+    after_push_hook: ''
 ```
 
 Please note that the Action depends on `bash`. If you're using the Action in a job in combination with a custom Docker container, make sure that `bash` is installed.
@@ -157,7 +182,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v7
       with:
         ref: ${{ github.head_ref }}
 
@@ -168,6 +193,8 @@ jobs:
       with:
         commit_message: Apply php-cs-fixer changes
 ```
+
+See [EXAMPLES.md](EXAMPLES.md) for more scenarios, including auto-formatting, dependency updates, generated docs, release tagging, drift checks, and GPG-signed commits.
 
 ## Inputs
 
@@ -200,6 +227,87 @@ You can use these outputs to trigger other Actions in your Workflow run based on
     run: echo "No Changes!"
 ```
 
+## Hooks
+
+git-auto-commit can run custom shell snippets around each git operation
+it performs. This is useful when you need to prepare or clean up the
+repository as part of the same step — for example, unshallowing a
+shallow clone right before the commit is staged.
+
+Eight optional hooks are available:
+
+| Hook | Runs |
+| ---- | ---- |
+| `before_add_hook` / `after_add_hook` | around `git add` |
+| `before_commit_hook` / `after_commit_hook` | around `git commit` |
+| `before_tag_hook` / `after_tag_hook` | around `git tag` (only when a tag is being created) |
+| `before_push_hook` / `after_push_hook` | around `git push` (skipped when `skip_push: true`) |
+
+Each hook is an inline shell snippet that runs in the same bash process
+as the action. The working directory is your repository, and all
+`INPUT_*` environment variables and standard GitHub Actions env vars are
+visible to the snippet.
+
+### Example
+
+```yaml
+- uses: step-security/git-auto-commit-action@v7
+  with:
+    before_add_hook: |
+      git fetch --unshallow
+```
+
+Multi-line snippets work via YAML's `|` block scalar:
+
+```yaml
+- uses: step-security/git-auto-commit-action@v7
+  with:
+    before_commit_hook: |
+      echo "About to commit at $(date)"
+      ./scripts/prepare-commit.sh
+```
+
+### Notes
+
+- A hook only runs when its underlying step actually runs. For example,
+  `before_add_hook`/`after_add_hook` are skipped when the working tree is clean,
+  and `before_push_hook`/`after_push_hook` are skipped when `skip_push: true`.
+- If a hook exits with a non-zero status, the action fails. Append
+  `|| true` to a snippet to ignore its failure.
+- Hooks share environment with the action, so they can read action
+  inputs (e.g. `$INPUT_COMMIT_MESSAGE`) and write to `$GITHUB_OUTPUT`.
+- Snippets run under `set -eu`. Referencing an unset variable aborts the
+  action; use `${VAR:-}` to default an optional variable to empty.
+
+### Security
+
+Hook snippets are evaluated as shell code in the same process as the
+action. Treat them as you would any `run:` step.
+
+> [!CAUTION]
+> **Do not combine hooks with the `pull_request_target` event when the
+> snippet references attacker-controlled GitHub context.** Fields like
+> `${{ github.event.pull_request.title }}`, `${{ github.event.pull_request.body }}`,
+> `${{ github.head_ref }}`, and commit messages from a fork are
+> interpolated into the snippet **before** bash sees it. A malicious PR
+> can inject shell commands that run on your runner with access to your
+> repository secrets. See the [`pull_request_target` section](#workflow-should-run-in-base-repository)
+> for the broader risk and [GitHub's script-injection guidance](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections).
+
+If you need values from PR-controlled context inside a hook, pass them
+via an intermediate env var rather than interpolating them directly into
+the snippet:
+
+```yaml
+- uses: step-security/git-auto-commit-action@v7
+  env:
+    PR_TITLE: ${{ github.event.pull_request.title }}
+  with:
+    before_commit_hook: |
+      # $PR_TITLE is read as data, not evaluated as code
+      echo "PR: $PR_TITLE"
+```
+
 ## Limitations & Gotchas
 
 The goal of this Action is to be "the Action for committing files for the 80% use case". Therefore, you might run into issues if your Workflow falls into the not supported 20% portion.
@@ -222,7 +330,7 @@ You must use `actions/checkout@v2` or later versions to check out the repository
 In non-`push` events, such as `pull_request`, make sure to specify the `ref` to check out:
 
 ```yaml
-- uses: actions/checkout@v5
+- uses: actions/checkout@v7
   with:
     ref: ${{ github.head_ref }}
 ```
@@ -240,7 +348,7 @@ You can change this by creating a new [Personal Access Token (PAT)](https://gith
 storing the token as a secret in your repository and then passing the new token to the [`actions/checkout`](https://github.com/actions/checkout#usage) Action step.
 
 ```yaml
-- uses: actions/checkout@v5
+- uses: actions/checkout@v7
   with:
     token: ${{ secrets.PAT }}
 ```
@@ -248,13 +356,13 @@ storing the token as a secret in your repository and then passing the new token 
 If you create a personal access token (classic), apply the `repo` and `workflow` scopes.
 If you create a fine-grained personal access token, apply the `Contents`-permissions.
 
-If you work in an organization and don't want to create a PAT from your personal account, we recommend using a [robot account](https://docs.github.com/en/github/getting-started-with-github/types-of-github-accounts) for the token.
+If you work in an organization and don't want to create a PAT from your personal account, we recommend using a [robot account](https://docs.github.com/en/get-started/learning-about-github/types-of-github-accounts) for the token.
 
 ### Prevent Infinite Loop when using a Personal Access Token
 
 If you're using a Personal Access Token (PAT) to push commits to GitHub repository, the resulting commit or push can trigger other GitHub Actions workflows. This can result in an infinite loop.
 
-If you would like to prevent this, you can add `skip-checks:true` to the commit message. See [Skipping workflow runs](https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs) for details.
+If you would like to prevent this, you can add `skip-checks:true` to the commit message. See [Skipping workflow runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs) for details.
 
 ### Change to file is not detected
 
@@ -266,7 +374,7 @@ Does your workflow change a file, but "git-auto-commit" does not detect the chan
 
 If your commit message should span multiple lines, you have to create a separate step to generate the string. 
 
-The example below can be used as a starting point to generate a multiline commit meesage. Learn more how multiline strings in GitHub Actions work in the [GitHub documentation](https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings).
+The example below can be used as a starting point to generate a multiline commit meesage. Learn more how multiline strings in GitHub Actions work in the [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#multiline-strings).
 
 ```yaml
     # Building a multiline commit message
@@ -321,13 +429,13 @@ As git-auto-commit by default does not use **your** username and email when crea
 
 By default, GitHub Actions doesn't run Workflows on forks from **private** repositories. To enable Actions for **private** repositories enable "Run workflows from pull requests" in your repository settings.
 
-See [this announcement from GitHub](https://github.blog/2020-08-03-github-actions-improvements-for-fork-and-pull-request-workflows/) or the [GitHub docs](https://docs.github.com/en/github/administering-a-repository/disabling-or-limiting-github-actions-for-a-repository#enabling-workflows-for-private-repository-forks) for details.
+See [this announcement from GitHub](https://github.blog/2020-08-03-github-actions-improvements-for-fork-and-pull-request-workflows/) or the [GitHub docs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#enabling-workflows-for-private-repository-forks) for details.
 
 
 ### Use in forks from public repositories
 
 > [!NOTE] 
-> This Action technically works with forks. However, please note that the combination of triggers and their options can cause issues. Please read [the documentation](https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows) on which triggers GitHub Actions support.\
+> This Action technically works with forks. However, please note that the combination of triggers and their options can cause issues. Please read [the documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) on which triggers GitHub Actions support.\
 > Ensure your contributors enable "Allow edits by maintainers" when opening a pull request. ([Learn more](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/allowing-changes-to-a-pull-request-branch-created-from-a-fork)) \
 > \
 > **If you use this Action in combination with a linter/fixer, it's easier if you run the Action on `push` on your `main`-branch.**
@@ -341,12 +449,17 @@ However, there are a couple of ways to use this Actions in Workflows that should
 ### Workflow should run in **base** repository
 
 > [!CAUTION]
-> The following section explains how you can use git-auto-commit in combination with the `pull_request_target` trigger.   
-> **Using `pull_request_target` in your workflows can lead to repository compromise as [mentioned](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/) by GitHub's own security team. This means, that a bad actor could potentially leak/steal your GitHub Actions repository secrets.**   
-> Please be aware of this risk when using `pull_request_target` in your workflows.
-> 
-> If your workflow runs code-fixing tools, consider running the workflow on your default branch by listening to the `push` event or use a third-party tool like [autofix.ci](https://autofix.ci/).   
+> The following section explains how you can use git-auto-commit in combination with the `pull_request_target` trigger.
+> **Using `pull_request_target` in your workflows can lead to repository compromise as [mentioned](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/) by GitHub's own security team. This means, that a bad actor could potentially leak/steal your GitHub Actions repository secrets.**
+> Please be aware of this risk when using `pull_request_target` in your workflows. See [GitHub's documentation](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target) for more information.
+>
+> If your workflow runs code-fixing tools, consider running the workflow on your default branch by listening to the `push` event or use a third-party tool like [autofix.ci](https://autofix.ci/).
 > We keep this documentation around, as many questions came in over the years, on how to use this action for public forks.
+>
+> To remind users of this risk, git-auto-commit emits a warning annotation whenever it detects it is running on a `pull_request_target` event.
+> If you have evaluated the risk and want to silence the warning, set the `disable_pull_request_target_trigger_warning` input to `true`.
+>
+> **Extra caution if you also use [hooks](#hooks):** hook snippets are evaluated as shell code. Interpolating attacker-controlled fields (PR title/body, branch name, fork commit messages, etc.) directly into a hook input on a `pull_request_target` workflow lets a malicious PR run arbitrary commands on your runner with access to your secrets. Pass such values through an `env:` block and reference them as `$VARS` inside the snippet — see the [Security note in the Hooks section](#security) for an example.
 
 The workflow below runs whenever a commit is pushed to the `main`-branch or when activity on a pull request happens, by listening to the [`pull_request_target`](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target) event.
 
@@ -370,7 +483,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v7
       with:
         # Checkout the fork/head-repository and push changes to the fork.
         # If you skip this, the base repository will be checked out and changes
@@ -406,7 +519,7 @@ Finally, you have to use `push_options: '--force'` to overwrite the git history 
 The steps in your workflow might look like this:
 
 ```yaml
-- uses: actions/checkout@4
+- uses: actions/checkout@v7
   with:
     # Fetch the last 2 commits instead of just 1. (Fetching just 1 commit would overwrite the whole history)
     fetch-depth: 2
@@ -439,7 +552,9 @@ Make sure to [checkout the correct branch](#checkout-the-correct-branch).
 If your Workflow can't push the commit to the repository because of authentication issues,
 please update your Workflow configuration and usage of [`actions/checkout`](https://github.com/actions/checkout#usage).
 
-Updating the `token` value with a Personal Access Token should fix your issues.
+Please note that `persist-credentials` in `actions/checkout` must be set to `true` to push new commits to the repository.
+
+If you still can't push the commit, and you're using branch protection rules or similar features, updating the `token` value with a Personal Access Token should fix your issues.
 
 ### git-auto-commit fails to push commit that creates or updates files in `.github/workflows/`
 
@@ -459,18 +574,18 @@ If you create a personal access token (classic), apply the `repo` and `workflow`
 If you create a fine-grained personal access token, apply the `Contents`-permissions.
 
 ```yaml
-- uses: actions/checkout@v5
+- uses: actions/checkout@v7
   with:
     # We pass the "PAT" secret to the checkout action; if no PAT secret is available to the workflow runner (eg. Dependabot) we fall back to the default "GITHUB_TOKEN".
     token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
 ```
-You can learn more about Personal Access Token in the [GitHub documentation](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token).
+You can learn more about Personal Access Token in the [GitHub documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
 
 
 > [!TIP] 
 > If you're working in an organisation, and you don't want to create the PAT from your personal account, we recommend using a bot-account for such tokens.
 
-If you go the "force pushes" route, you have to enable force pushes to a protected branch (see [documentation](https://help.github.com/en/github/administering-a-repository/enabling-force-pushes-to-a-protected-branch)) and update your Workflow to use force push like this.
+If you go the "force pushes" route, you have to enable force pushes to a protected branch (see [documentation](https://docs.github.com/en/github/administering-a-repository/enabling-force-pushes-to-a-protected-branch)) and update your Workflow to use force push like this.
 
 ```yaml
     - uses: step-security/git-auto-commit-action@v7
@@ -492,7 +607,7 @@ If you're using the Action with a custom `file_pattern` and the Action throws a 
 
 ### Custom `file_pattern`, changed files but seeing "Working tree clean. Nothing to commit." in the logs
 
-If you're using a custom `file_pattern` and the Action does not detect the changes made in your worfklow, you're probably running into a globbing issue.
+If you're using a custom `file_pattern` and the Action does not detect the changes made in your workflow, you're probably running into a globbing issue.
 
 Let's imagine you use `file_pattern: '*.md'` to detect and commit changes to all Markdown files in your repository.
 If your Workflow now only updates `.md`-files in a subdirectory, but you have an untouched `.md`-file in the root of the repository, the git-auto-commit Action will display "Working tree clean. Nothing to commit." in the Workflow log.
@@ -527,10 +642,10 @@ yarn test
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/step-security/git-auto-commit-action/tags).
+We use [SemVer](https://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/step-security/git-auto-commit-action/tags).
 
 We also provide major version tags to make it easier to always use the latest release of a major version. For example, you can use `step-security/git-auto-commit-action@v7` to always use the latest release of the current major version.
-(More information about this [here](https://help.github.com/en/actions/building-actions/about-actions#versioning-your-action).)
+(More information about this [here](https://docs.github.com/en/actions/building-actions/about-actions#versioning-your-action).)
 
 
 This Action has been inspired and adapted from the [auto-commit](https://github.com/cds-snc/github-actions/tree/master/auto-commit
